@@ -33,45 +33,45 @@ import xml.etree.ElementTree as ET
 
 def get_args():
   parser = argparse.ArgumentParser(
-      description='Fetch TV data from zap2it.',
-      epilog='This tool is noisy to stdout; '
-          'with cron use chronic from moreutils.')
+    description='Fetch TV data from zap2it.',
+    epilog='This tool is noisy to stdout; '
+      'with cron use chronic from moreutils.')
   parser.add_argument(
-      '--aid', dest='zap_aid', type=str, default='gapzap',
-      help='Raw zap2it input parameter.  (Affiliate ID?)')
+    '--aid', dest='zap_aid', type=str, default='gapzap',
+    help='Raw zap2it input parameter.  (Affiliate ID?)')
   parser.add_argument(
-      '-c', '--country', dest='zap_country', type=str, default='USA',
-      help='Country identifying the listings to fetch.')
+    '-c', '--country', dest='zap_country', type=str, default='USA',
+    help='Country identifying the listings to fetch.')
   parser.add_argument(
-      '-d', '--delay', dest='delay', type=int, default=5,
-      help='Delay, in seconds, between server fetches.')
+    '-d', '--delay', dest='delay', type=int, default=5,
+    help='Delay, in seconds, between server fetches.')
   parser.add_argument(
-      '--device', dest='zap_device', type=str, default='-',
-      help='Raw zap2it input parameter.  (?)')
+    '--device', dest='zap_device', type=str, default='-',
+    help='Raw zap2it input parameter.  (?)')
   parser.add_argument(
-      '--headend-id', dest='zap_headendId', type=str, default='lineupId',
-      help='Raw zap2it input parameter.  (?)')
+    '--headend-id', dest='zap_headendId', type=str, default='lineupId',
+    help='Raw zap2it input parameter.  (?)')
   parser.add_argument(
-      '--is-override', dest='zap_isOverride', type=bool, default=True,
-      help='Raw zap2it input parameter.  (?)')
+    '--is-override', dest='zap_isOverride', type=bool, default=True,
+    help='Raw zap2it input parameter.  (?)')
   parser.add_argument(
-      '--language', dest='zap_languagecode', type=str, default='en',
-      help='Raw zap2it input parameter.  (Language.)')
+    '--language', dest='zap_languagecode', type=str, default='en',
+    help='Raw zap2it input parameter.  (Language.)')
   parser.add_argument(
-      '--pref', dest='zap_pref', type=str, default='',
-      help='Raw zap2it input parameter.  (Preferences?)')
+    '--pref', dest='zap_pref', type=str, default='',
+    help='Raw zap2it input parameter.  (Preferences?)')
   parser.add_argument(
-      '--timespan', dest='zap_timespan', type=int, default=3,
-      help='Raw zap2it input parameter.  (Hours of data per fetch?)')
+    '--timespan', dest='zap_timespan', type=int, default=3,
+    help='Raw zap2it input parameter.  (Hours of data per fetch?)')
   parser.add_argument(
-      '--timezone', dest='zap_timezone', type=str, default='',
-      help='Raw zap2it input parameter.  (Time zone?)')
+    '--timezone', dest='zap_timezone', type=str, default='',
+    help='Raw zap2it input parameter.  (Time zone?)')
   parser.add_argument(
-      '--user-id', dest='zap_userId', type=str, default='-',
-      help='Raw zap2it input parameter.  (?)')
+    '--user-id', dest='zap_userId', type=str, default='-',
+    help='Raw zap2it input parameter.  (?)')
   parser.add_argument(
-      '-z', '--zip', '--postal', dest='zap_postalCode', type=str, required=True,
-      help='The zip/postal code identifying the listings to fetch.')
+    '-z', '--zip', '--postal', dest='zap_postalCode', type=str, required=True,
+    help='The zip/postal code identifying the listings to fetch.')
   parser.add_argument(
     '--fetch-days', dest='fetch_days', type=int, default=7,
     help='Days ahead when fetching listings'
@@ -95,10 +95,10 @@ def get_cached(cache_dir, cache_key, delay, url):
       if e.code == 400:
         print('Got a 400 error!  Ignoring it.')
         result = (
-            b'{'
-            b'"note": "Got a 400 error at this time, skipping.",'
-            b'"channels": []'
-            b'}')
+          b'{'
+          b'"note": "Got a 400 error at this time, skipping.",'
+          b'"channels": []'
+          b'}')
       else:
         raise
     with open(cache_path, 'wb') as f:
@@ -172,9 +172,9 @@ def main():
       done_channels = True
       for c_in in d['channels']:
         c_out = sub_el(out, 'channel',
-            id='I%s.%s.zap2it.com' % (c_in['channelNo'], c_in['channelId']))
+          id='I%s.%s.zap2it.com' % (c_in['channelNo'], c_in['channelId']))
         sub_el(c_out, 'display-name',
-            text='%s %s' % (c_in['channelNo'], c_in['callSign']))
+          text='%s %s' % (c_in['channelNo'], c_in['callSign']))
         sub_el(c_out, 'display-name', text=c_in['channelNo'])
         sub_el(c_out, 'display-name', text=c_in['callSign'])
         c_thumb = urllib.parse.urlparse(c_in['thumbnail'], scheme='https')
@@ -188,9 +188,9 @@ def main():
         tm_start = tm_parse(event['startTime'])
         tm_end = tm_parse(event['endTime'])
         prog_out = sub_el(out, 'programme',
-            start=tm_start.strftime('%Y%m%d%H%M%S %z'),
-            stop=tm_end.strftime('%Y%m%d%H%M%S %z'),
-            channel=c_id)
+          start=tm_start.strftime('%Y%m%d%H%M%S %z'),
+          stop=tm_end.strftime('%Y%m%d%H%M%S %z'),
+          channel=c_id)
 
         for (k_in, k_out) in (
             ('title', 'title'),
@@ -205,11 +205,11 @@ def main():
 
         if 'filter-movie' in event['filter'] and prog_in['releaseYear']:
           sub_el(
-              prog_out, 'sub-title', lang='en',
-              text='Movie: ' + prog_in['releaseYear'])
+            prog_out, 'sub-title', lang='en',
+            text='Movie: ' + prog_in['releaseYear'])
         elif prog_in['episodeTitle']:
           sub_el(
-              prog_out, 'sub-title', lang='en', text = prog_in['episodeTitle'])
+            prog_out, 'sub-title', lang='en', text = prog_in['episodeTitle'])
 
         sub_el(prog_out, 'length', units='minutes', text=event['duration'])
 
@@ -217,11 +217,11 @@ def main():
           s_ = int(prog_in['season'], 10)
           e_ = int(prog_in['episode'], 10)
           sub_el(
-              prog_out, 'episode-num', system='common',
-              text='S%02dE%02d' % (s_, e_))
+            prog_out, 'episode-num', system='common',
+            text='S%02dE%02d' % (s_, e_))
           sub_el(
-              prog_out, 'episode-num', system='xmltv_ns',
-              text='%d.%d.' % (int(s_)-1, int(e_)-1))
+            prog_out, 'episode-num', system='xmltv_ns',
+            text='%d.%d.' % (int(s_)-1, int(e_)-1))
 
         if 'New' in event['flag'] and 'live' not in event['flag']:
           sub_el(prog_out, 'new')
