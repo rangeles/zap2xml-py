@@ -76,6 +76,11 @@ def get_args():
     '--fetch-days', dest='fetch_days', type=int, default=7,
     help='Days ahead when fetching listings'
   )
+  parser.add_argument(
+    '--channel-naming', dest='channel_naming', type=str, default='original',
+    choices=['original', 'callsign'],
+    help='Set the channel naming strategy'
+  )
   return parser.parse_args()
 
 
@@ -128,6 +133,11 @@ def sub_el(parent, name, text=None, **kwargs):
   if text: el.text = text
   return el
 
+def channel_name(channel, strategy):
+  if strategy == 'callsign':
+    return channel['callSign']
+  else:
+    return 'I%s.%s.zap2it.com' % (channel['channelNo'], channel['channelId'])
 
 def main():
   cache_dir = pathlib.Path(__file__).parent.joinpath('cache')
@@ -172,7 +182,7 @@ def main():
       done_channels = True
       for c_in in d['channels']:
         c_out = sub_el(out, 'channel',
-          id='I%s.%s.zap2it.com' % (c_in['channelNo'], c_in['channelId']))
+          id=channel_name(c_in, args.channel_naming))
         sub_el(c_out, 'display-name',
           text='%s %s' % (c_in['channelNo'], c_in['callSign']))
         sub_el(c_out, 'display-name', text=c_in['channelNo'])
@@ -182,7 +192,7 @@ def main():
         sub_el(c_out, 'icon', src=c_thumb.geturl())
 
     for c in d['channels']:
-      c_id = 'I%s.%s.zap2it.com' % (c['channelNo'], c['channelId'])
+      c_id = channel_name(c, args.channel_naming)
       for event in c['events']:
         prog_in = event['program']
         tm_start = tm_parse(event['startTime'])
