@@ -23,6 +23,7 @@ Written to have only standard library dependencies.
 import argparse
 import datetime
 import json
+import logging
 import pathlib
 import sys
 import time
@@ -30,6 +31,8 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
+logging.basicConfig()
+logger = logging.getLogger(__name__)
 
 def get_args():
   parser = argparse.ArgumentParser(
@@ -81,24 +84,29 @@ def get_args():
     choices=['original', 'callsign'],
     help='Set the channel naming strategy'
   )
+  parser.add_argument(
+    '--logging', dest='logging', type=int, default=logging.INFO,
+    choices=[logging.WARNING, logging.INFO, logging.DEBUG],
+    help='Set the logging level (30 = warning, 20 = info, 10 = debug)'
+  )
   return parser.parse_args()
 
 
 def get_cached(cache_dir, cache_key, delay, url):
   cache_path = cache_dir.joinpath(cache_key)
   if cache_path.is_file():
-    print('FROM CACHE:', url)
+    logger.info('FROM CACHE:%s', url)
     with open(cache_path, 'rb') as f:
       return f.read()
   else:
-    print('Fetching:  ', url)
+    logger.info('Fetching:  %s', url)
     try:
       resp = urllib.request.urlopen(urllib.request.Request(url,
         headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}))
       result = resp.read()
     except urllib.error.HTTPError as e:
       if e.code == 400:
-        print('Got a 400 error!  Ignoring it.')
+        logger.warning('Got a 400 error!  Ignoring it.')
         result = (
           b'{'
           b'"note": "Got a 400 error at this time, skipping.",'
@@ -119,7 +127,7 @@ def remove_stale_cache(cache_dir, zap_time):
       if t >= zap_time: continue
     except:
       pass
-    print('Removing stale cache file:', p.name)
+    logger.debug('Removing stale cache file:%s', p.name)
     p.unlink()
 
 
@@ -145,15 +153,16 @@ def main():
     cache_dir.mkdir()
 
   args = get_args()
+  logging.getLogger().setLevel(args.logging)
   base_qs = {k[4:]: v for (k, v) in vars(args).items() if k.startswith('zap_')}
   done_channels = False
   err = 0
   # Start time parameter is now rounded down to nearest `zap_timespan`, in s.
   zap_time = time.mktime(time.localtime())
-  print('Local time:    ', zap_time)
+  logger.debug('Local time:    %s', zap_time)
   zap_time_window = args.zap_timespan * 3600
   zap_time = int(zap_time - (zap_time % zap_time_window))
-  print('First zap time:', zap_time)
+  logger.debug('First zap time:%s', zap_time)
 
   remove_stale_cache(cache_dir, zap_time)
 
@@ -167,7 +176,7 @@ def main():
   for i in range(int(args.fetch_days * 24 / args.zap_timespan)):
     i_time = zap_time + (i * zap_time_window)
     i_dt = datetime.datetime.fromtimestamp(i_time)
-    print('Getting data for', i_dt.isoformat())
+    logger.debug('Getting data for%s', i_dt.isoformat())
 
     qs = base_qs.copy()
     qs['lineupId'] = '%s-%s-DEFAULT' % (args.zap_country, args.zap_headendId)
