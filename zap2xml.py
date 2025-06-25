@@ -177,6 +177,9 @@ def main():
             text='%s %s' % (c_in['channelNo'], c_in['callSign']))
         sub_el(c_out, 'display-name', text=c_in['channelNo'])
         sub_el(c_out, 'display-name', text=c_in['callSign'])
+        c_thumb = urllib.parse.urlparse(c_in['thumbnail'], scheme='https')
+        c_thumb = c_thumb._replace(query='')
+        sub_el(c_out, 'icon', src=c_thumb.geturl())
 
     for c in d['channels']:
       c_id = 'I%s.%s.zap2it.com' % (c['channelNo'], c['channelId'])
@@ -224,7 +227,27 @@ def main():
           sub_el(prog_out, 'new')
 
         for f in event['filter']:
-          sub_el(prog_out, 'genre', lang='en', text=f[7:])
+          f=f[7:]
+          sub_el(prog_out, 'genre', lang='en', text=f)
+          if f == 'family':
+            sub_el(prog_out, 'category', lang='en',
+              text='Children\'s / Youth programs')
+          elif f == 'movie':
+            sub_el(prog_out, 'category', lang='en',
+              text='Movie / Drama')
+          elif f == 'news':
+            sub_el(prog_out, 'category', lang='en',
+              text='News / Current affairs')
+          elif f == 'sports':
+            sub_el(prog_out, 'category', lang='en',
+              text='Sports')
+          elif f == 'talk':
+            sub_el(prog_out, 'category', lang='en',
+              text='Talk show')
+
+        if event['thumbnail']:
+          sub_el(prog_out, 'icon',
+            src='https://zap2it.tmsimg.com/assets/%s.jpg' % event['thumbnail'])
 
   out_path = pathlib.Path(__file__).parent.joinpath('xmltv.xml')
   with open(out_path.absolute(), 'wb') as f:
