@@ -84,7 +84,8 @@ def get_cached(cache_dir, cache_key, delay, url):
   else:
     print('Fetching:  ', url)
     try:
-      resp = urllib.request.urlopen(url)
+      resp = urllib.request.urlopen(urllib.request.Request(url,
+        headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}))
       result = resp.read()
     except urllib.error.HTTPError as e:
       if e.code == 400:
@@ -143,8 +144,8 @@ def main():
   remove_stale_cache(cache_dir, zap_time)
 
   out = ET.Element('tv')
-  out.set('source-info-url', 'http://tvlistings.zap2it.com/')
-  out.set('source-info-name', 'zap2it.com')
+  out.set('source-info-url', 'http://tvlistings.gracenote.com/')
+  out.set('source-info-name', 'gracenote.com')
   out.set('generator-info-name', 'zap2xml.py')
   out.set('generator-info-url', 'github.com/arantius/zap2xml-py')
 
@@ -157,7 +158,7 @@ def main():
     qs = base_qs.copy()
     qs['lineupId'] = '%s-%s-DEFAULT' % (args.zap_country, args.zap_headendId)
     qs['time'] = i_time
-    url = 'https://tvlistings.zap2it.com/api/grid?'
+    url = 'https://tvlistings.gracenote.com/api/grid?'
     url += urllib.parse.urlencode(qs)
 
     result = get_cached(cache_dir, str(i_time), args.delay, url)
