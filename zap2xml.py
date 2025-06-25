@@ -229,6 +229,7 @@ def main():
         for f in event['filter']:
           f=f[7:]
           sub_el(prog_out, 'genre', lang='en', text=f)
+          sub_el(prog_out, 'category', lang='en', text=f.capitalize())
           if f == 'family':
             sub_el(prog_out, 'category', lang='en',
               text='Children\'s / Youth programs')
@@ -238,9 +239,6 @@ def main():
           elif f == 'news':
             sub_el(prog_out, 'category', lang='en',
               text='News / Current affairs')
-          elif f == 'sports':
-            sub_el(prog_out, 'category', lang='en',
-              text='Sports')
           elif f == 'talk':
             sub_el(prog_out, 'category', lang='en',
               text='Talk show')
