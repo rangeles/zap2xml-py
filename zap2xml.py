@@ -5,17 +5,17 @@
 
 import argparse
 import datetime
-import json
 import logging
 import pathlib
+from requests_cache import CachedSession
 import sys
 import time
 import urllib.parse
-import urllib.request
 import xml.etree.ElementTree as ET
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
+session = CachedSession(backend='filesystem', stale_if_error=True)
 
 def get_args():
   parser = argparse.ArgumentParser(
@@ -60,58 +60,22 @@ def get_args():
     help='The zip/postal code identifying the listings to fetch.')
   parser.add_argument(
     '--fetch-days', dest='fetch_days', type=int, default=7,
-    help='Days ahead when fetching listings'
-  )
+    help='Days ahead when fetching listings')
   parser.add_argument(
     '--channel-naming', dest='channel_naming', type=str, default='original',
     choices=['original', 'callsign'],
-    help='Set the channel naming strategy'
-  )
+    help='Set the channel naming strategy')
   parser.add_argument(
     '--logging', dest='logging', type=int, default=logging.INFO,
     choices=[logging.WARNING, logging.INFO, logging.DEBUG],
-    help='Set the logging level (30 = warning, 20 = info, 10 = debug)'
-  )
+    help='Set the logging level (30 = warning, 20 = info, 10 = debug)')
+  parser.add_argument(
+    '--cache-expiry', dest='cache_expiry', type=int, default=24,
+    help='Cache expiry (hours). Expect new net request to be issued.')
+  parser.add_argument(
+    '--cache-hold', dest='cache_hold', type=int, default=72,
+    help='Cache hold (hours). Expect cache to delete afterwards.')
   return parser.parse_args()
-
-
-def get_cached(cache_dir, cache_key, delay, url):
-  cache_path = cache_dir.joinpath(cache_key)
-  if cache_path.is_file():
-    logger.info('FROM CACHE:%s', url)
-    with open(cache_path, 'rb') as f:
-      return f.read()
-  else:
-    logger.info('Fetching:  %s', url)
-    try:
-      resp = urllib.request.urlopen(urllib.request.Request(url,
-        headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}))
-      result = resp.read()
-    except urllib.error.HTTPError as e:
-      if e.code == 400:
-        logger.warning('Got a 400 error!  Ignoring it.')
-        result = (
-          b'{'
-          b'"note": "Got a 400 error at this time, skipping.",'
-          b'"channels": []'
-          b'}')
-      else:
-        raise
-    with open(cache_path, 'wb') as f:
-      f.write(result)
-    time.sleep(delay)
-    return result
-
-
-def remove_stale_cache(cache_dir, zap_time):
-  for p in cache_dir.glob('*'):
-    try:
-      t = int(p.name)
-      if t >= zap_time: continue
-    except:
-      pass
-    logger.debug('Removing stale cache file:%s', p.name)
-    p.unlink()
 
 
 def tm_parse(tm):
@@ -131,23 +95,19 @@ def channel_name(channel, strategy):
     return 'I%s.%s.zap2it.com' % (channel['channelNo'], channel['channelId'])
 
 def main():
-  cache_dir = pathlib.Path(__file__).parent.joinpath('cache')
-  if not cache_dir.is_dir():
-    cache_dir.mkdir()
-
   args = get_args()
   logging.getLogger().setLevel(args.logging)
+  session.settings.expire_after = datetime.timedelta(hours=args.cache_expiry)
   base_qs = {k[4:]: v for (k, v) in vars(args).items() if k.startswith('zap_')}
   done_channels = False
   err = 0
+  previous_from_cache = True
   # Start time parameter is now rounded down to nearest `zap_timespan`, in s.
   zap_time = time.mktime(time.localtime())
   logger.debug('Local time:    %s', zap_time)
   zap_time_window = args.zap_timespan * 3600
   zap_time = int(zap_time - (zap_time % zap_time_window))
   logger.debug('First zap time:%s', zap_time)
-
-  remove_stale_cache(cache_dir, zap_time)
 
   out = ET.Element('tv')
   out.set('source-info-url', 'http://tvlistings.gracenote.com/')
@@ -164,11 +124,21 @@ def main():
     qs = base_qs.copy()
     qs['lineupId'] = '%s-%s-DEFAULT' % (args.zap_country, args.zap_headendId)
     qs['time'] = i_time
-    url = 'https://tvlistings.gracenote.com/api/grid?'
-    url += urllib.parse.urlencode(qs)
 
-    result = get_cached(cache_dir, str(i_time), args.delay, url)
-    d = json.loads(result)
+    if not previous_from_cache:
+      time.sleep(args.delay)
+    result = session.get('https://tvlistings.gracenote.com/api/grid', params=qs,
+      headers={'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+    previous_from_cache = result.from_cache
+
+    d = {'channels': []}
+    if result.ok:
+      d = result.json()
+    elif result.status_code == 400:
+      logging.warning("Got a HTTP 400 error! Ignoring it.")
+    else:
+      result.raise_for_status()
 
     if not done_channels:
       done_channels = True
@@ -254,6 +224,7 @@ def main():
     f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
     f.write(ET.tostring(out, encoding='UTF-8'))
 
+  session.cache.delete(older_than=datetime.timedelta(hours=args.cache_hold))
   sys.exit(err)
 
 
