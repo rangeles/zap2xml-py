@@ -2,5 +2,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
-cache
+http_cache
+*.xml
+# Virtualenv
+bin/
+lib/
+pyvenv.cfg
+CACHEDIR.TAG
