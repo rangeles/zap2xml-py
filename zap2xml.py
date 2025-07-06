@@ -78,11 +78,6 @@ def get_args():
   return parser.parse_args()
 
 
-def tm_parse(tm):
-  tm = tm.replace('Z', '+00:00')
-  return datetime.datetime.fromisoformat(tm)
-
-
 def sub_el(parent, name, text=None, **kwargs):
   el = ET.SubElement(parent, name, **kwargs)
   if text: el.text = text
@@ -103,23 +98,21 @@ def main():
   err = 0
   previous_from_cache = True
   # Start time parameter is now rounded down to nearest `zap_timespan`, in s.
-  zap_time = time.mktime(time.localtime())
-  logger.debug('Local time:    %s', zap_time)
+  zap_time = int(time.time())
   zap_time_window = args.zap_timespan * 3600
-  zap_time = int(zap_time - (zap_time % zap_time_window))
-  logger.debug('First zap time:%s', zap_time)
+  zap_time = zap_time - (zap_time % zap_time_window)
+  logger.debug('Nearest timespan aligned timestamp %s', zap_time)
 
   out = ET.Element('tv')
   out.set('source-info-url', 'http://tvlistings.gracenote.com/')
   out.set('source-info-name', 'gracenote.com')
   out.set('generator-info-name', 'zap2xml.py')
-  out.set('generator-info-url', 'github.com/arantius/zap2xml-py')
 
   # Fetch data in `zap_timespan` chunks.
   for i in range(int(args.fetch_days * 24 / args.zap_timespan)):
     i_time = zap_time + (i * zap_time_window)
     i_dt = datetime.datetime.fromtimestamp(i_time)
-    logger.debug('Getting data for%s', i_dt.isoformat())
+    logger.info('Getting data for %s', i_dt)
 
     qs = base_qs.copy()
     qs['lineupId'] = '%s-%s-DEFAULT' % (args.zap_country, args.zap_headendId)
@@ -140,7 +133,7 @@ def main():
     else:
       result.raise_for_status()
 
-    if not done_channels:
+    if not done_channels and d['channels']:
       done_channels = True
       for c_in in d['channels']:
         c_out = sub_el(out, 'channel',
@@ -157,8 +150,8 @@ def main():
       c_id = channel_name(c, args.channel_naming)
       for event in c['events']:
         prog_in = event['program']
-        tm_start = tm_parse(event['startTime'])
-        tm_end = tm_parse(event['endTime'])
+        tm_start = datetime.datetime.fromisoformat(event['startTime'])
+        tm_end = datetime.datetime.fromisoformat(event['endTime'])
         prog_out = sub_el(out, 'programme',
           start=tm_start.strftime('%Y%m%d%H%M%S %z'),
           stop=tm_end.strftime('%Y%m%d%H%M%S %z'),
@@ -199,9 +192,7 @@ def main():
           sub_el(prog_out, 'new')
 
         for f in event['filter']:
-          f=f[7:]
-          sub_el(prog_out, 'genre', lang='en', text=f)
-          sub_el(prog_out, 'category', lang='en', text=f.capitalize())
+          f=f.replace('filter-', '')
           if f == 'family':
             sub_el(prog_out, 'category', lang='en',
               text='Children\'s / Youth programs')
@@ -214,6 +205,8 @@ def main():
           elif f == 'talk':
             sub_el(prog_out, 'category', lang='en',
               text='Talk show')
+          else:
+            sub_el(prog_out, 'category', lang='en', text=f.capitalize())
 
         if event['thumbnail']:
           sub_el(prog_out, 'icon',
