@@ -101,7 +101,7 @@ def main():
   zap_time = int(time.time())
   zap_time_window = args.zap_timespan * 3600
   zap_time = zap_time - (zap_time % zap_time_window)
-  logger.debug('Nearest timespan aligned timestamp %s', zap_time)
+  logger.debug('Nearest timespan aligned timestamp %d', zap_time)
 
   out = ET.Element('tv')
   out.set('source-info-url', 'http://tvlistings.gracenote.com/')
@@ -111,8 +111,6 @@ def main():
   # Fetch data in `zap_timespan` chunks.
   for i in range(int(args.fetch_days * 24 / args.zap_timespan)):
     i_time = zap_time + (i * zap_time_window)
-    i_dt = datetime.datetime.fromtimestamp(i_time)
-    logger.info('Getting data for %s', i_dt)
 
     qs = base_qs.copy()
     qs['lineupId'] = '%s-%s-DEFAULT' % (args.zap_country, args.zap_headendId)
@@ -120,6 +118,7 @@ def main():
 
     if not previous_from_cache:
       time.sleep(args.delay)
+    logger.info('Fetching %s local', datetime.datetime.fromtimestamp(i_time))
     result = session.get('https://tvlistings.gracenote.com/api/grid', params=qs,
       headers={'Accept': 'application/json',
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
