@@ -6,7 +6,6 @@
 import argparse
 import datetime
 import logging
-import pathlib
 from requests_cache import CachedSession
 import sys
 import time
@@ -76,6 +75,9 @@ def get_args():
   parser.add_argument(
     '--cache-hold', dest='cache_hold', type=int, default=72,
     help='Cache hold (hours). Expect cache to delete afterwards.')
+  parser.add_argument(
+    '--stdout', dest='stdout', action='store_true',
+    help='Force output to stdout')
   return parser.parse_args()
 
 
@@ -105,6 +107,7 @@ def main():
   logger.debug('Nearest timespan aligned timestamp %d', zap_time)
 
   out = ET.Element('tv')
+  tree = ET.ElementTree(out)
   out.set('source-info-url', 'http://tvlistings.gracenote.com/')
   out.set('source-info-name', 'gracenote.com')
   out.set('generator-info-name', 'zap2xml.py')
@@ -212,10 +215,10 @@ def main():
           sub_el(prog_out, 'icon',
             src='https://zap2it.tmsimg.com/assets/%s.jpg' % event['thumbnail'])
 
-  out_path = pathlib.Path(__file__).parent.joinpath('xmltv.xml')
-  with open(out_path.absolute(), 'wb') as f:
-    f.write(b'<?xml version="1.0" encoding="UTF-8"?>\n')
-    f.write(ET.tostring(out, encoding='UTF-8'))
+  if args.stdout:
+    ET.dump(tree)
+  else:
+    tree.write('xmltv.xml', encoding='UTF-8', xml_declaration=True)
 
   session.cache.delete(older_than=datetime.timedelta(hours=args.cache_hold))
   sys.exit(err)
