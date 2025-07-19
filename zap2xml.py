@@ -15,7 +15,8 @@ import xml.etree.ElementTree as ET
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-session = CachedSession(backend='filesystem', stale_if_error=True)
+session = CachedSession(backend='filesystem', stale_if_error=True,
+  ignored_parameters=['aid'])
 
 def get_args():
   parser = argparse.ArgumentParser(
