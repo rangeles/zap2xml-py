@@ -66,9 +66,9 @@ def get_args():
     choices=['original', 'callsign'],
     help='Set the channel naming strategy')
   parser.add_argument(
-    '--logging', dest='logging', type=int, default=logging.INFO,
-    choices=[logging.WARNING, logging.INFO, logging.DEBUG],
-    help='Set the logging level (30 = warning, 20 = info, 10 = debug)')
+    '--logging', dest='logging', type=int, default=20,
+    choices=list(range(10, 51, 10)),
+    help='Set the logging level (10 = debug ... 50 = critical)')
   parser.add_argument(
     '--cache-expiry', dest='cache_expiry', type=int, default=24,
     help='Cache expiry (hours). Expect new net request to be issued.')
